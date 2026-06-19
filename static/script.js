@@ -398,3 +398,25 @@ function showError(message) {
 function showSuccess(message) {
   alert("✅ " + message);
 }
+
+// Buy Me a Coffee popup — shown every time the app opens
+function showCoffeeModal() {
+  const modal = document.getElementById("coffeeModal");
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeCoffeeModal() {
+  const modal = document.getElementById("coffeeModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+// Close the desktop window (via pywebview) or browser tab as a fallback
+function closeApp() {
+  if (window.pywebview && window.pywebview.api && window.pywebview.api.close_app) {
+    window.pywebview.api.close_app();
+  } else {
+    window.close();
+  }
+}
+
+showCoffeeModal();

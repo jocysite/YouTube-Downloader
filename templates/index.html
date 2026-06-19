@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <button id="closeAppBtn" class="close-app-btn" onclick="closeApp()" title="Close" aria-label="Close">&times;</button>
+
     <div class="container">
         <!-- Header -->
         <header class="header">
@@ -150,7 +152,25 @@
         <!-- Footer -->
         <footer class="footer">
             <p>Made with ⚽ for YouTube lovers</p>
+            <p class="footer-coffee">
+                <a href="https://buymeacoffee.com/yosefmulatu" target="_blank" rel="noopener">☕ Support the developer</a>
+            </p>
         </footer>
+    </div>
+
+    <!-- Buy Me a Coffee popup (shown every time the app opens) -->
+    <div id="coffeeModal" class="coffee-modal-overlay hidden">
+        <div class="coffee-modal">
+            <button class="coffee-modal-close" onclick="closeCoffeeModal()" title="Close" aria-label="Close">&times;</button>
+            <h2>☕ Enjoying this app?</h2>
+            <p>If it saves you time, consider supporting the developer. Thank you! ❤️</p>
+            <img src="{{ url_for('static', filename='buymeacoffee-qr.png') }}"
+                 alt="Buy Me a Coffee QR code" class="coffee-qr">
+            <a href="https://buymeacoffee.com/yosefmulatu" target="_blank" rel="noopener" class="coffee-btn">
+                buymeacoffee.com/yosefmulatu
+            </a>
+            <button class="coffee-continue" onclick="closeCoffeeModal()">Continue to app</button>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

@@ -824,3 +824,148 @@ body::-webkit-scrollbar-thumb:hover {
     color: var(--text-tertiary);
     font-size: 12px;
 }
+/* ===== Close (X) button ===== */
+.close-app-btn {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-radius: 50%;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow);
+}
+
+.close-app-btn:hover {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+}
+
+/* ===== Buy Me a Coffee modal ===== */
+.coffee-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.coffee-modal {
+    position: relative;
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-dark) 100%);
+    border: 1px solid var(--primary);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    padding: 32px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+}
+
+.coffee-modal h2 {
+    color: var(--text-primary);
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.coffee-modal p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.coffee-qr {
+    width: 220px;
+    height: 220px;
+    max-width: 100%;
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 0 auto 20px;
+    display: block;
+}
+
+.coffee-btn {
+    display: inline-block;
+    width: 100%;
+    background: var(--warning);
+    color: #1a1a1a;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+    padding: 14px 18px;
+    border-radius: 10px;
+    transition: filter 0.2s ease;
+}
+
+.coffee-btn:hover {
+    filter: brightness(1.08);
+}
+
+.coffee-continue {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.coffee-continue:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+
+.coffee-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.coffee-modal-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-card-hover);
+}
+
+.footer-coffee {
+    margin-top: 8px;
+}
+
+.footer-coffee a {
+    color: var(--warning);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.footer-coffee a:hover {
+    text-decoration: underline;
+}

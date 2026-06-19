@@ -65,6 +65,15 @@ def wait_until_ready(url, timeout=15.0):
     return False
 
 
+class Api:
+    """JavaScript-callable bridge exposed to the web UI."""
+
+    def close_app(self):
+        """Close every app window, which ends webview.start() and exits."""
+        for win in list(webview.windows):
+            win.destroy()
+
+
 def main():
     port = find_free_port()
     url = f"http://{HOST}:{port}"
@@ -85,6 +94,7 @@ def main():
         width=1100,
         height=820,
         min_size=(800, 600),
+        js_api=Api(),
     )
     webview.start()
 
