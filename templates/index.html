@@ -4,7 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Free Download Manager - YouTube Edition</title>
+    <title>Afriway Downloader - YouTube Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
@@ -12,10 +15,10 @@
     <div class="app-shell">
         <aside class="sidebar">
             <div class="brand-panel">
-                <div class="brand-mark">FDM</div>
+                <div class="brand-mark"><span class="brand-afri">A</span><span class="brand-way">W</span></div>
                 <div>
-                    <h1>Free Download Manager</h1>
-                    <p>Fast YouTube downloads with an African-inspired palette.</p>
+                    <h1>Afriway Downloader</h1>
+                    <p>Proudly African • Boldly Modern</p>
                 </div>
             </div>
 
@@ -28,7 +31,8 @@
             </nav>
 
             <div class="workflow-panel">
-                <h2>Workflow</h2>
+                <h2>🌍 The Ubuntu Way</h2>
+                <p class="workflow-motto">"I am because we are" — download smarter together.</p>
                 <ol>
                     <li>Paste the YouTube URL.</li>
                     <li>Fetch metadata and choose quality.</li>
@@ -38,19 +42,24 @@
             </div>
 
             <div class="sidebar-footer">
-                <span>🌍 African theme</span>
-                <span>Modern download experience</span>
+                <div class="footer-pattern">
+                    <span class="pattern-bar pattern-red"></span>
+                    <span class="pattern-bar pattern-gold"></span>
+                    <span class="pattern-bar pattern-green"></span>
+                </div>
+                <span>🎨 Inspired by the colours of Africa</span>
+                <span>🌅 Sunrise over the Savannah</span>
             </div>
         </aside>
 
         <main class="content">
             <header class="topbar">
                 <div>
-                    <p class="topbar-label">Download Manager</p>
-                    <h2>Free Download Manager Style</h2>
+                    <p class="topbar-label">Afriway Downloader</p>
+                    <h2>🇪🇹 <span class="ethiopia-text">Ethiopian-Inspired</span> Download Experience</h2>
                 </div>
                 <div class="topbar-actions">
-                    <span class="status-pill">Ready</span>
+                    <span class="status-pill">⚡ Ready</span>
                 </div>
             </header>
 
@@ -66,17 +75,17 @@
                     <div class="status-card-note">Paste a video or playlist link.</div>
                 </article>
                 <article class="status-card">
-                    <div class="status-card-title">Theme</div>
-                    <div class="status-card-value">African Style</div>
-                    <div class="status-card-note">Warm, bold and elegant.</div>
+                    <div class="status-card-title">Spirit</div>
+                    <div class="status-card-value">Harambee</div>
+                    <div class="status-card-note">"Let's pull together" — Swahili spirit of teamwork.</div>
                 </article>
             </section>
 
             <section class="card fetch-card">
                 <div class="card-header">
                     <div>
-                        <h3>Step 1</h3>
-                        <p>Enter a YouTube URL to fetch video or playlist details.</p>
+                        <h3>Step 1 — <span class="highlight-african">Sawubona</span></h3>
+                        <p>Enter a YouTube URL to fetch video or playlist details. <em>Sawubona</em> means "we see you" in Zulu.</p>
                     </div>
                 </div>
                 <div class="card-body">
@@ -94,8 +103,8 @@
             <section id="infoSection" class="card hidden">
                 <div class="card-header">
                     <div>
-                        <h3>Video Details</h3>
-                        <p>Review the selected media before downloading.</p>
+                        <h3>Step 2 — <span class="highlight-african">Pamoja</span></h3>
+                        <p>Review the selected media before downloading. <em>Pamoja</em> means "together" in Swahili.</p>
                     </div>
                 </div>
                 <div class="card-body">
@@ -107,8 +116,8 @@
                 <section id="typeSection" class="card hidden">
                     <div class="card-header">
                         <div>
-                            <h3>Download Type</h3>
-                            <p>Choose between video or audio only.</p>
+                            <h3>Step 3 — <span class="highlight-african">Chagua</span></h3>
+                            <p>Choose between video or audio only. <em>Chagua</em> means "choose" in Swahili.</p>
                         </div>
                     </div>
                     <div class="card-body">
@@ -118,7 +127,7 @@
                                 <span class="radio-custom"></span>
                                 <div class="radio-content">
                                     <span class="radio-title">Video + Audio</span>
-                                    <span class="radio-desc">MP4 file</span>
+                                    <span class="radio-desc">MP4 file — full experience</span>
                                 </div>
                             </label>
                             <label class="radio-label">
@@ -126,7 +135,7 @@
                                 <span class="radio-custom"></span>
                                 <div class="radio-content">
                                     <span class="radio-title">Audio Only</span>
-                                    <span class="radio-desc">MP3 file</span>
+                                    <span class="radio-desc">MP3 file — just the sound</span>
                                 </div>
                             </label>
                         </div>
@@ -136,18 +145,18 @@
                 <section id="qualitySection" class="card hidden">
                     <div class="card-header">
                         <div>
-                            <h3>Quality Selection</h3>
-                            <p>Pick the best video and audio formats for the download.</p>
+                            <h3>Step 4 — <span class="highlight-african">Ubora</span></h3>
+                            <p>Pick the best video and audio formats. <em>Ubora</em> means "quality" in Swahili.</p>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="quality-grid">
                             <div id="videoQualityContainer" class="quality-container">
-                                <h4 class="quality-title">Video Quality</h4>
+                                <h4 class="quality-title">🎬 Video Quality</h4>
                                 <div id="videoFormats" class="format-list"></div>
                             </div>
                             <div class="quality-container">
-                                <h4 class="quality-title">Audio Quality</h4>
+                                <h4 class="quality-title">🎵 Audio Quality</h4>
                                 <div id="audioFormats" class="format-list"></div>
                             </div>
                         </div>
@@ -158,8 +167,8 @@
             <section id="playlistSection" class="card hidden">
                 <div class="card-header">
                     <div>
-                        <h3>Playlist Items</h3>
-                        <p>Select which playlist videos should be downloaded.</p>
+                        <h3>Step 5 — <span class="highlight-african">Umoja</span></h3>
+                        <p>Select which playlist videos should be downloaded. <em>Umoja</em> means "unity" in Swahili.</p>
                     </div>
                 </div>
                 <div class="card-body">
@@ -175,8 +184,8 @@
             <section class="card hidden" id="downloadSection">
                 <div class="card-header">
                     <div>
-                        <h3>Ready to Download</h3>
-                        <p>Start the download with your chosen settings.</p>
+                        <h3>Step 6 — <span class="highlight-african">Pakua</span></h3>
+                        <p>Start the download with your chosen settings. <em>Pakua</em> means "download" in Swahili.</p>
                     </div>
                 </div>
                 <div class="card-body">
@@ -186,7 +195,7 @@
                             <polyline points="7 10 12 15 17 10"></polyline>
                             <line x1="12" y1="15" x2="12" y2="3"></line>
                         </svg>
-                        <span class="btn-text">Start Download</span>
+                        <span class="btn-text">Pakua Sasa (Download Now)</span>
                         <span class="spinner hidden"></span>
                     </button>
                 </div>

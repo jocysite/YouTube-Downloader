@@ -381,11 +381,16 @@ def _download_thread(session_id, url, download_type, video_format_id, audio_form
 
 
 if __name__ == '__main__':
+    # Use port from environment (set by Electron) or default to 5000
+    port = int(os.environ.get('FLASK_PORT', 5000))
+    debug_mode = os.environ.get('FLASK_DEBUG', '1') == '1'
+
     print("\n" + "="*50)
-    print("🎥 YouTube Downloader Server")
+    print("Afriway Downloader Server")
     print("="*50)
-    print("🌐 Server running at: http://localhost:5000")
-    print("📁 Downloads will be saved to:", get_downloads_folder())
+    print(f"Server running at: http://localhost:{port}")
+    print("Downloads will be saved to:", get_downloads_folder())
+    print("Proudly African - Inspired by Ethiopia")
     print("="*50 + "\n")
 
-    app.run(debug=True, port=5000)
+    app.run(debug=debug_mode, port=port, host='127.0.0.1')

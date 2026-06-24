@@ -1,0 +1,62 @@
+{
+  "name": "afriway-downloader",
+  "version": "1.0.0",
+  "description": "Afriway Downloader - Proudly African desktop YouTube downloader with an Ethiopian-inspired theme",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.afriway.downloader",
+    "productName": "Afriway Downloader",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "app.py",
+      "download.py",
+      "static/**/*",
+      "templates/**/*",
+      "requirements.txt",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".",
+        "to": "app",
+        "filter": ["**/*", "!dist/**", "!node_modules/**", "!.git/**"]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": null,
+      "artifactName": "YouTube-Downloader-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities"
+    }
+  },
+  "keywords": ["youtube", "downloader", "african", "ethiopian", "desktop", "electron"],
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
