@@ -118,18 +118,14 @@ YouTube-Downloader/
 3. Paste a YouTube URL → Fetch metadata → Choose quality → Download
 4. When you close the window, both Electron and Flask shut down cleanly
 
-## The African Flow 🇪🇹 🇰🇪 🇿🇦
+## Workflow
 
-Each step in the workflow is named in **Zulu**, **Swahili**, and **Afan Oromo** — celebrating the linguistic diversity of Africa:
-
-| Step | Zulu | Swahili | Afan Oromo | Meaning |
-|------|------|---------|------------|---------|
-| 1 | **Sawubona** | — | **Akkam** | "Hello / We see you" |
-| 2 | — | **Pamoja** | **Walta'i** | "Together" |
-| 3 | — | **Chagua** | **Filadhu** | "Choose" |
-| 4 | — | **Ubora** | **Qulqullina** | "Quality" |
-| 5 | — | **Umoja** | **Tokkummaa** | "Unity" |
-| 6 | — | **Pakua** | **Buufadhu** | "Download" |
+1. **Enter URL** — Paste a YouTube video or playlist link
+2. **Video Details** — Review the selected media information
+3. **Download Type** — Choose between video+audio or audio only
+4. **Quality Selection** — Pick the best video and audio formats
+5. **Playlist Items** — Select which videos to include or skip
+6. **Download** — Start the download and track progress in real-time
 
 ## Usage
 
@@ -138,7 +134,7 @@ Each step in the workflow is named in **Zulu**, **Swahili**, and **Afan Oromo** 
 3. **Click "Fetch URL"** to retrieve video information and available formats
 4. **Select** your preferred video quality and audio format
 5. For playlists, choose which videos to include/exclude
-6. **Click "Pakua Sasa (Download Now)"** to begin downloading
+6. **Click "Download Now"** to begin downloading
 7. Track progress in real-time
 
 ## Troubleshooting
@@ -165,4 +161,3 @@ MIT
 
 *Built with ❤️ using Electron, Flask, and yt-dlp*
 *Design inspired by the colours of Ethiopia, Kenya, and the Pan-African spirit.*
-*Afan Oromo translations honour the Oromo people — the largest ethnic group in Ethiopia.*
