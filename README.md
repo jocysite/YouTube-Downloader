@@ -134,7 +134,7 @@ YouTube-Downloader/
 3. **Click "Fetch URL"** to retrieve video information and available formats
 4. **Select** your preferred video quality and audio format
 5. For playlists, choose which videos to include/exclude
-6. **Click "Download Now"** to begin downloading
+6. **Click "Pakua Sasa (Download Now)"** to begin downloading
 7. Track progress in real-time
 
 ## Troubleshooting
