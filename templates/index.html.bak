@@ -1,0 +1,158 @@
+<!--templates/index.html-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 7l-7 5 7 5V7z"></path>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+                <h1>YouTube Downloader</h1>
+            </div>
+            <p class="subtitle">Download videos and playlists in high quality</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- URL Input Section -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Enter URL</h2>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="urlInput" 
+                            placeholder="Paste YouTube video or playlist URL here..."
+                            class="input-field"
+                        >
+                        <button id="fetchBtn" class="btn btn-primary">
+                            <span class="btn-text">Fetch Info</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Video Info Section -->
+            <section id="infoSection" class="card hidden">
+                <div class="card-header">
+                    <h2>Video Information</h2>
+                </div>
+                <div class="card-body">
+                    <div id="videoInfo" class="video-info"></div>
+                </div>
+            </section>
+
+            <!-- Download Type Selection -->
+            <section id="typeSection" class="card hidden">
+                <div class="card-header">
+                    <h2>Download Type</h2>
+                </div>
+                <div class="card-body">
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="downloadType" value="video" checked>
+                            <span class="radio-custom"></span>
+                            <div class="radio-content">
+                                <span class="radio-title">Video + Audio</span>
+                                <span class="radio-desc">Download as MP4 file</span>
+                            </div>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="downloadType" value="audio">
+                            <span class="radio-custom"></span>
+                            <div class="radio-content">
+                                <span class="radio-title">Audio Only</span>
+                                <span class="radio-desc">Download as MP3 file</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quality Selection -->
+            <section id="qualitySection" class="card hidden">
+                <div class="card-header">
+                    <h2>Select Quality</h2>
+                </div>
+                <div class="card-body">
+                    <div class="quality-grid">
+                        <!-- Video Quality -->
+                        <div id="videoQualityContainer" class="quality-container">
+                            <h3 class="quality-title">Video Quality</h3>
+                            <div id="videoFormats" class="format-list"></div>
+                        </div>
+                        
+                        <!-- Audio Quality -->
+                        <div class="quality-container">
+                            <h3 class="quality-title">Audio Quality</h3>
+                            <div id="audioFormats" class="format-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Playlist Video Selection Section -->
+            <section id="playlistSection" class="card hidden">
+                <div class="card-header">
+                    <h2>Select Videos to Download</h2>
+                </div>
+                <div class="card-body">
+                    <div class="playlist-controls">
+                        <button class="btn-small" onclick="selectAllVideos()">Select All</button>
+                        <button class="btn-small" onclick="deselectAllVideos()">Deselect All</button>
+                        <div id="selectedCount" class="selected-count"></div>
+                    </div>
+                    <div id="playlistVideos" class="playlist-videos-list"></div>
+                </div>
+            </section>
+
+            <!-- Download Button -->
+            <section id="downloadSection" class="hidden">
+                <button id="downloadBtn" class="btn btn-download">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span class="btn-text">Download Now</span>
+                    <span class="spinner hidden"></span>
+                </button>
+            </section>
+
+            <!-- Progress Section -->
+            <section id="progressSection" class="card hidden">
+                <div class="card-header">
+                    <h2>Download Progress</h2>
+                </div>
+                <div class="card-body">
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill"></div>
+                        </div>
+                        <div id="progressText" class="progress-text">Preparing download...</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made with ⚽ for YouTube lovers</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
