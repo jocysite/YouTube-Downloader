@@ -20,7 +20,39 @@ except ImportError:
     HTTP_REQ_AVAILABLE = False
 
 import shutil
-ARIA2C_AVAILABLE = bool(shutil.which('aria2c'))
+
+def _find_aria2c():
+    """Return the full path to aria2c, or None if not found.
+    Checks PATH first, then the project directory, then common install locations.
+    Users can simply drop aria2c.exe next to app.py and it will be found.
+    """
+    # 1. Already on PATH
+    on_path = shutil.which('aria2c')
+    if on_path:
+        return on_path
+
+    # 2. Next to app.py (user dropped it in the project folder)
+    here = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'aria2c.exe')
+    if os.path.isfile(here):
+        return here
+
+    # 3. Common install locations (Windows)
+    candidates = [
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'aria2', 'aria2c.exe'),
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Microsoft', 'WinGet', 'Links', 'aria2c.exe'),
+        r'C:\aria2\aria2c.exe',
+        r'C:\tools\aria2\aria2c.exe',
+        r'C:\ProgramData\chocolatey\bin\aria2c.exe',
+        r'C:\Program Files\aria2\aria2c.exe',
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+
+    return None
+
+_ARIA2C_PATH = _find_aria2c()
+ARIA2C_AVAILABLE = bool(_ARIA2C_PATH)
 
 app = Flask(__name__)
 
@@ -623,11 +655,12 @@ def _download_direct_thread(session_id, url, filename):
 
 
 _ARIA2C_INSTALL_HINT = (
-    'aria2c not found. Install it:\n'
+    'aria2c not found. Quick fix: download aria2c.exe from '
+    'https://github.com/aria2/aria2/releases and place it in the app folder next to app.py, then restart.\n\n'
+    'Or install system-wide:\n'
     '  Windows:  winget install aria2  or  choco install aria2\n'
     '  macOS:    brew install aria2\n'
-    '  Linux:    sudo apt install aria2\n'
-    'Then restart the app.'
+    '  Linux:    sudo apt install aria2'
 )
 
 
@@ -635,7 +668,7 @@ def _run_aria2c(session_id, args):
     """Run aria2c with the given extra args, updating session progress from stdout."""
     import re
     cmd = [
-        'aria2c',
+        _ARIA2C_PATH,
         f'--dir={_get_download_path()}',
         '--seed-time=0',        # stop seeding immediately after completion
         '--summary-interval=1', # print summary every second
