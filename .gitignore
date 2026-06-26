@@ -18,8 +18,12 @@ static/aria2*/
 
 # Node / Electron
 node_modules/
-dist/
 out/
+
+# PyInstaller build output
+build/
+dist/
+*.spec.bak
 
 # IDE
 .idea/

@@ -33,8 +33,11 @@ def _find_aria2c():
     if on_path:
         return on_path
 
-    # 2. Next to app.py (user dropped it in the project folder)
-    project_dir = os.path.dirname(os.path.abspath(__file__))
+    # 2. Next to the exe (frozen) or app.py (dev)
+    if getattr(sys, 'frozen', False):
+        project_dir = os.path.dirname(sys.executable)
+    else:
+        project_dir = os.path.dirname(os.path.abspath(__file__))
     here = os.path.join(project_dir, 'aria2c.exe')
     if os.path.isfile(here):
         return here
@@ -63,7 +66,10 @@ def _find_aria2c():
 _ARIA2C_PATH = _find_aria2c()
 ARIA2C_AVAILABLE = bool(_ARIA2C_PATH)
 
-app = Flask(__name__)
+_base_dir = sys._MEIPASS if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__,
+            template_folder=os.path.join(_base_dir, 'templates'),
+            static_folder=os.path.join(_base_dir, 'static'))
 
 # Disable Flask request logging for cleaner console
 log = logging.getLogger('werkzeug')
