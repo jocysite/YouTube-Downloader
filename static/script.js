@@ -169,12 +169,23 @@ function buildQueueItem(d) {
   const progressPct = d.progress || 0;
   const showBar     = d.status === "downloading";
 
+  let folderBtn = "";
+  if (d.status === "completed" && d.filepath) {
+    if (d.file_exists === false) {
+      folderBtn = `<button type="button" class="btn-show-folder btn-show-folder--missing"
+        onclick="showInFolder('${escHtml(d.filepath)}')">⚠️ File moved?</button>`;
+    } else {
+      folderBtn = `<button type="button" class="btn-show-folder"
+        onclick="showInFolder('${escHtml(d.filepath)}')">📂 Show in folder</button>`;
+    }
+  }
+
   return `
     <div class="queue-item">
       <div class="queue-item-icon">${icon}</div>
       <div class="queue-item-info">
         <div class="queue-item-name" title="${escHtml(name)}">${escHtml(name)}</div>
-        <div class="queue-item-meta">${typeBadge} ${statusBadge}</div>
+        <div class="queue-item-meta">${typeBadge} ${statusBadge}${folderBtn}</div>
         ${showBar ? `
           <div class="queue-item-progress-bar">
             <div class="queue-item-progress-fill" style="width:${progressPct}%"></div>
@@ -184,6 +195,41 @@ function buildQueueItem(d) {
       </div>
     </div>
   `;
+}
+
+async function showInFolder(filepath) {
+  if (!filepath) { showError("File location not recorded for this download."); return; }
+  try {
+    const res = await fetch("/api/show-in-folder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filepath })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.error === "file_not_found") {
+        openMissingModal(filepath);
+      } else {
+        showError(data.error || "Could not open folder");
+      }
+    }
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+function openMissingModal(filepath) {
+  const modal = document.getElementById("missingFilesModal");
+  document.getElementById("missingFilesBody").innerHTML = `
+    <p>The file can no longer be found at its saved location:</p>
+    <code class="missing-path">${escHtml(filepath)}</code>
+    <p>It may have been moved, renamed, or deleted.</p>
+  `;
+  modal.classList.remove("hidden");
+}
+
+function closeMissingModal() {
+  document.getElementById("missingFilesModal").classList.add("hidden");
 }
 
 function escHtml(str) {
@@ -681,7 +727,8 @@ function showError(message)   { alert("❌ Error: " + message); }
 function showSuccess(message) { alert("✅ " + message); }
 
 // ══════════════════════════════════════════════════
-// Init
+// Init — restore queue state immediately on page load / refresh
 // ══════════════════════════════════════════════════
 loadDownloadPath();
+refreshAllQueues();   // show persisted downloads right away without waiting 2s
 startQueuePolling();

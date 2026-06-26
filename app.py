@@ -1,8 +1,10 @@
 """
 Flask backend for YouTube Downloader
 """
+import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -65,6 +67,43 @@ download_sessions = {}
 
 # Configurable download path (None = use system Downloads folder)
 _download_path = None
+
+
+def _get_app_data_dir():
+    """Writable data directory — points to AppData when packaged as a .exe, project dir otherwise."""
+    if getattr(sys, 'frozen', False):
+        return os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'AfriWayDownloader')
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+_sessions_file = os.path.join(_get_app_data_dir(), 'downloads.json')
+
+
+def _save_sessions():
+    """Persist download_sessions to disk so they survive a page refresh or server restart."""
+    try:
+        os.makedirs(os.path.dirname(_sessions_file), exist_ok=True)
+        with open(_sessions_file, 'w', encoding='utf-8') as f:
+            json.dump(dict(download_sessions), f, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        print(f'⚠️  Could not save sessions: {exc}')
+
+
+def _load_sessions():
+    """Restore previous sessions from disk on startup. Active downloads become 'interrupted'."""
+    if not os.path.exists(_sessions_file):
+        return
+    try:
+        with open(_sessions_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        for s in data.values():
+            if s.get('status') == 'downloading':
+                s['status'] = 'interrupted'
+                s['message'] = 'Interrupted — app was restarted'
+        download_sessions.update(data)
+        print(f'📂 Restored {len(data)} previous download session(s)')
+    except Exception as exc:
+        print(f'⚠️  Could not restore sessions: {exc}')
 
 
 def _get_download_path():
@@ -314,7 +353,10 @@ def download():
             'type': 'youtube',
             'name': url,
             'url': url,
+            'filepath': '',
+            'save_dir': '',
         }
+        _save_sessions()
 
         print(f"\n🚀 Starting download...")
         print(f"📥 Type: {download_type.upper()}")
@@ -443,6 +485,14 @@ def _download_thread(session_id, url, download_type, video_format_id, audio_form
                 print("⚙️  Processing and merging...")
                 download_sessions[session_id]['message'] = 'Processing and merging...'
 
+        captured_filepath = []
+
+        def postprocessor_hook(d):
+            if d.get('status') == 'finished':
+                fp = d.get('filepath', '')
+                if fp and not fp.endswith('.ytdl') and not fp.endswith('.part'):
+                    captured_filepath.append(fp)
+
         # Create match filter for skipping videos
         def match_filter(info_dict, incomplete):
             """Filter to skip specific playlist items"""
@@ -478,6 +528,7 @@ def _download_thread(session_id, url, download_type, video_format_id, audio_form
                 'outtmpl': output_template,
                 'ignoreerrors': True,  # Continue on errors
                 'progress_hooks': [progress_hook],
+                'postprocessor_hooks': [postprocessor_hook],
                 'match_filter': match_filter,
                 'noplaylist': not is_playlist,
                 'quiet': False,
@@ -504,6 +555,7 @@ def _download_thread(session_id, url, download_type, video_format_id, audio_form
                 }],
                 'ignoreerrors': True,  # Continue on errors
                 'progress_hooks': [progress_hook],
+                'postprocessor_hooks': [postprocessor_hook],
                 'match_filter': match_filter,
                 'noplaylist': not is_playlist,
                 'quiet': False,
@@ -516,19 +568,26 @@ def _download_thread(session_id, url, download_type, video_format_id, audio_form
         print(f"\n✅ Download completed!")
         print(f"📁 Saved to: {youtube_folder}\n")
 
+        download_sessions[session_id]['save_dir'] = youtube_folder
+        if captured_filepath and not is_playlist:
+            download_sessions[session_id]['filepath'] = captured_filepath[-1]
+        else:
+            download_sessions[session_id]['filepath'] = youtube_folder
         download_sessions[session_id]['status'] = 'completed'
         download_sessions[session_id]['progress'] = 100
-        download_sessions[session_id][
-            'message'] = f'Download completed! Saved to: {youtube_folder}'
+        download_sessions[session_id]['message'] = f'Download completed! Saved to: {youtube_folder}'
+        _save_sessions()
 
     except yt_dlp.utils.DownloadError as e:
         print(f"\n❌ Download error: {str(e)}\n")
         download_sessions[session_id]['status'] = 'error'
         download_sessions[session_id]['message'] = f'Download error: {str(e)}'
+        _save_sessions()
     except (OSError, KeyError) as e:
         print(f"\n❌ Error: {str(e)}\n")
         download_sessions[session_id]['status'] = 'error'
         download_sessions[session_id]['message'] = f'Error: {str(e)}'
+        _save_sessions()
 
 
 @app.route('/api/get-download-path', methods=['GET'])
@@ -616,7 +675,10 @@ def api_download_direct():
             'type': 'direct',
             'name': filename,
             'url': url,
+            'filepath': '',
+            'save_dir': '',
         }
+        _save_sessions()
         thread = threading.Thread(
             target=_download_direct_thread,
             args=(session_id, url, filename)
@@ -630,7 +692,8 @@ def api_download_direct():
 
 def _download_direct_thread(session_id, url, filename):
     try:
-        dest = os.path.join(_get_download_path(), filename)
+        save_dir = _get_download_path()
+        dest = os.path.join(save_dir, filename)
         r = http_req.get(url, stream=True, timeout=30)
         r.raise_for_status()
         total = int(r.headers.get('Content-Length', 0))
@@ -644,13 +707,17 @@ def _download_direct_thread(session_id, url, filename):
                         pct = (downloaded / total) * 100
                         download_sessions[session_id]['progress'] = pct
                         download_sessions[session_id]['message'] = f'Downloading... {pct:.1f}%'
+        download_sessions[session_id]['filepath'] = dest
+        download_sessions[session_id]['save_dir'] = save_dir
         download_sessions[session_id]['status'] = 'completed'
         download_sessions[session_id]['progress'] = 100
         download_sessions[session_id]['message'] = f'Saved to: {dest}'
+        _save_sessions()
         print(f'✅ Direct download complete: {dest}')
     except Exception as e:
         download_sessions[session_id]['status'] = 'error'
         download_sessions[session_id]['message'] = str(e)
+        _save_sessions()
         print(f'❌ Direct download error: {e}')
 
 
@@ -666,7 +733,6 @@ _ARIA2C_INSTALL_HINT = (
 
 def _run_aria2c(session_id, args):
     """Run aria2c with the given extra args, updating session progress from stdout."""
-    import re
     cmd = [
         _ARIA2C_PATH,
         f'--dir={_get_download_path()}',
@@ -701,17 +767,23 @@ def _run_aria2c(session_id, args):
                 download_sessions[session_id]['message'] = line[:120]
         proc.wait()
         if proc.returncode == 0:
+            save_dir = _get_download_path()
+            download_sessions[session_id]['filepath'] = save_dir
+            download_sessions[session_id]['save_dir'] = save_dir
             download_sessions[session_id]['status'] = 'completed'
             download_sessions[session_id]['progress'] = 100
             download_sessions[session_id]['message'] = 'Download complete!'
+            _save_sessions()
             print(f'✅ aria2c complete for session {session_id}')
         else:
             download_sessions[session_id]['status'] = 'error'
             download_sessions[session_id]['message'] = f'aria2c exited with code {proc.returncode}'
+            _save_sessions()
             print(f'❌ aria2c error (code {proc.returncode}) for session {session_id}')
     except Exception as e:
         download_sessions[session_id]['status'] = 'error'
         download_sessions[session_id]['message'] = str(e)
+        _save_sessions()
         print(f'❌ Torrent error: {e}')
 
 
@@ -733,7 +805,10 @@ def api_download_torrent():
             'type': 'torrent',
             'name': name,
             'url': url,
+            'filepath': '',
+            'save_dir': '',
         }
+        _save_sessions()
         thread = threading.Thread(target=_run_aria2c, args=(session_id, [url]))
         thread.daemon = True
         thread.start()
@@ -758,7 +833,10 @@ def api_download_video_best():
             'type': 'video',
             'name': url.split('/')[-1] or url,
             'url': url,
+            'filepath': '',
+            'save_dir': '',
         }
+        _save_sessions()
         thread = threading.Thread(
             target=_download_video_best_thread,
             args=(session_id, url)
@@ -771,6 +849,14 @@ def api_download_video_best():
 
 
 def _download_video_best_thread(session_id, url):
+    captured_filepath = []
+
+    def postprocessor_hook(d):
+        if d.get('status') == 'finished':
+            fp = d.get('filepath', '')
+            if fp and not fp.endswith('.ytdl') and not fp.endswith('.part'):
+                captured_filepath.append(fp)
+
     def progress_hook(d):
         if d['status'] == 'downloading':
             try:
@@ -792,6 +878,7 @@ def _download_video_best_thread(session_id, url):
             'merge_output_format': 'mp4',
             'outtmpl': os.path.join(save_path, '%(title)s.%(ext)s'),
             'progress_hooks': [progress_hook],
+            'postprocessor_hooks': [postprocessor_hook],
             'quiet': True,
             'no_warnings': True,
         }
@@ -799,13 +886,20 @@ def _download_video_best_thread(session_id, url):
             info = ydl.extract_info(url, download=True)
             title = info.get('title', url)
             download_sessions[session_id]['name'] = title
+        if captured_filepath:
+            download_sessions[session_id]['filepath'] = captured_filepath[-1]
+        else:
+            download_sessions[session_id]['filepath'] = save_path
+        download_sessions[session_id]['save_dir'] = save_path
         download_sessions[session_id]['status'] = 'completed'
         download_sessions[session_id]['progress'] = 100
         download_sessions[session_id]['message'] = f'Saved: {title}'
+        _save_sessions()
         print(f'✅ Video download complete: {title}')
     except Exception as e:
         download_sessions[session_id]['status'] = 'error'
         download_sessions[session_id]['message'] = str(e)
+        _save_sessions()
         print(f'❌ Video download error: {e}')
 
 
@@ -814,14 +908,18 @@ def api_downloads():
     """Return all download sessions as a list, newest first."""
     sessions = []
     for sid, s in download_sessions.items():
+        filepath = s.get('filepath', '')
+        file_exists = os.path.exists(filepath) if filepath else None
         sessions.append({
-            'session_id': sid,
-            'type':       s.get('type', 'youtube'),
-            'name':       s.get('name', s.get('title', '')),
-            'url':        s.get('url', ''),
-            'status':     s.get('status', 'unknown'),
-            'progress':   s.get('progress', 0),
-            'message':    s.get('message', ''),
+            'session_id':  sid,
+            'type':        s.get('type', 'youtube'),
+            'name':        s.get('name', s.get('title', '')),
+            'url':         s.get('url', ''),
+            'status':      s.get('status', 'unknown'),
+            'progress':    s.get('progress', 0),
+            'message':     s.get('message', ''),
+            'filepath':    filepath,
+            'file_exists': file_exists,
         })
     sessions.reverse()
     return jsonify(sessions)
@@ -851,6 +949,37 @@ def api_browse_folder():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/show-in-folder', methods=['POST'])
+def api_show_in_folder():
+    """Open OS file explorer at the downloaded file's location."""
+    data = request.json
+    filepath = (data.get('filepath') or '').strip()
+    if not filepath:
+        return jsonify({'error': 'No filepath provided'}), 400
+    try:
+        norm = os.path.normpath(filepath)
+        if os.path.isfile(norm):
+            if os.name == 'nt':
+                subprocess.Popen(['explorer', '/select,', norm])
+            elif sys.platform == 'darwin':
+                subprocess.Popen(['open', '-R', norm])
+            else:
+                subprocess.Popen(['xdg-open', os.path.dirname(norm)])
+            return jsonify({'success': True})
+        elif os.path.isdir(norm):
+            if os.name == 'nt':
+                subprocess.Popen(['explorer', norm])
+            elif sys.platform == 'darwin':
+                subprocess.Popen(['open', norm])
+            else:
+                subprocess.Popen(['xdg-open', norm])
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'file_not_found', 'filepath': filepath}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/upload-torrent', methods=['POST'])
 def api_upload_torrent():
     """Accept a .torrent file upload and start the download via aria2c."""
@@ -872,7 +1001,10 @@ def api_upload_torrent():
             'type': 'torrent',
             'name': name,
             'url': f.filename,
+            'filepath': '',
+            'save_dir': '',
         }
+        _save_sessions()
         thread = threading.Thread(
             target=_run_aria2c_from_data,
             args=(session_id, torrent_data, name)
@@ -926,6 +1058,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('FLASK_PORT', 5000))
     debug_mode = os.environ.get('FLASK_DEBUG', '1') == '1'
 
+    _load_sessions()
     _ensure_qr_code()
 
     print("\n" + "="*50)

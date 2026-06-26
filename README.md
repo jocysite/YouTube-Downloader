@@ -1,163 +1,196 @@
-# Afriway Downloader 🦅🌍
+# Afriway Downloader
 
-**Proudly African • Boldly Modern**
+A multi-type download manager built with Python and Flask, inspired by the spirit of Africa. Download YouTube videos and playlists, torrent files, direct files, and videos from 1 000+ sites — all from one clean, dark-themed web interface.
 
-A **desktop application** for downloading YouTube videos and playlists with customizable quality and format options. Built with **Electron** and **Flask**, featuring an Ethiopian and Pan-African inspired design.
-
-> "Ubuntu — I am because we are." Download smarter together.
+---
 
 ## Features
 
-- 🖥️ **Desktop Application** — Runs as a standalone native window (no browser needed)
-- 🎥 Download individual YouTube videos
-- 📋 Download entire playlists with selective video picking
-- 🎯 Choose from multiple video quality options (360p, 720p, 1080p, etc.)
-- 🎵 Select preferred audio/video format combinations
-- ⚡ Smart quality fallback — automatically finds the best available quality
-- 📁 Saves to your Downloads folder
-- 🌅 **African-Inspired Theme** — Colors from the Ethiopian and Pan-African palette
-- 🌐 **Swahili & Zulu Flow** — "Sawubona" (we see you), "Pamoja" (together), "Chagua" (choose)
+| Tab | What you can download |
+|---|---|
+| **YouTube** | Videos & playlists — pick exact video/audio quality, download as MP4 or MP3 |
+| **Torrent** | Magnet links, `.torrent` URLs, or upload a `.torrent` file directly |
+| **Others** | Direct files (`.exe`, `.zip`, images…) and videos from 1 000+ sites via yt-dlp |
+| **All Downloads** | Unified queue with live search, type/status filters, real-time progress |
+
+**More highlights:**
+
+- Real-time progress bars and status polling (every 2 seconds)
+- Persistent download history — survives page refresh without restarting downloads
+- **"Show in folder"** button opens the file location in Explorer after completion
+- Missing file detection — if a completed file was moved, shows a clear warning
+- Custom download location via native OS folder picker
+- Fully responsive — works on desktop and mobile browsers
+- African-inspired dark UI with gold, green, and blue brand colours
+
+---
 
 ## Requirements
 
-- **Node.js** 18 or higher (for Electron)
-- **Python** 3.7 or higher
-- **pip** (Python package manager)
-- **ffmpeg** (for audio extraction and video merging — [download here](https://ffmpeg.org/download.html))
+### Python
+
+```
+Python >= 3.10
+```
+
+Install all Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### System tools
+
+These are **not** Python packages — install them once on your machine:
+
+#### FFmpeg (required for YouTube video+audio merging)
+
+| OS | Command |
+|---|---|
+| Windows | `winget install ffmpeg` or download from [ffmpeg.org](https://ffmpeg.org/download.html) |
+| macOS | `brew install ffmpeg` |
+| Linux | `sudo apt install ffmpeg` |
+
+> Without FFmpeg, YouTube downloads fall back to a single-stream format (no merging).
+
+#### aria2c (required for torrent downloads)
+
+| OS | Command |
+|---|---|
+| Windows | `winget install aria2` or download `aria2c.exe` from [GitHub Releases](https://github.com/aria2/aria2/releases) and place it next to `app.py` |
+| macOS | `brew install aria2` |
+| Linux | `sudo apt install aria2` |
+
+> Torrent downloads are disabled if aria2c is not found. All other tabs work without it.
+
+---
 
 ## Installation
 
-### 1. Clone this project
-
 ```bash
-git clone https://github.com/jocysite/YouTube-Downloader.git
-cd YouTube-Downloader
+# 1. Clone the repository
+git clone https://github.com/jocysite/Afriway-Downloader.git
+cd Afriway-Downloader
+
+# 2. (Recommended) Create a virtual environment
+python -m venv .venv
+
+# Windows:
+.venv\Scripts\activate
+# macOS / Linux:
+source .venv/bin/activate
+
+# 3. Install Python dependencies
+pip install -r requirements.txt
+
+# 4. Run the app
+python app.py
 ```
 
-### 2. Install Python dependencies
+Open **http://localhost:5000** in your browser.
 
-```bash
-pip install flask yt_dlp
-```
+---
 
-### 3. Install Node.js dependencies
+## How to Use
 
-```bash
-npm install
-```
+### YouTube Tab
 
-### 4. Install FFmpeg (required)
+1. Paste a YouTube video or playlist URL in the input field.
+2. Click **Fetch URL** — loads the title and available formats.
+3. Choose **Video + Audio** (MP4) or **Audio Only** (MP3).
+4. Select your preferred video and audio quality.
+5. For playlists, check/uncheck individual videos to skip them.
+6. Click **Download Now** — progress appears in the queue below.
 
-**Windows:**
-1. Download from https://ffmpeg.org/download.html
-2. Add `ffmpeg.exe` to your system PATH, or place it in the project directory
+### Torrent Tab
 
-**macOS:**
-```bash
-brew install ffmpeg
-```
+1. **Paste a magnet link or `.torrent` URL** in the input, then click **Start Download**.
+   — OR —
+2. **Upload a `.torrent` file** using the file picker.
 
-**Linux:**
-```bash
-sudo apt install ffmpeg
-```
+> Requires aria2c (see Requirements above).
 
-## Running the Application
+### Others Tab
 
-### Development Mode
+1. Paste any URL — a direct file link, a Vimeo/Twitter/Dailymotion video, or any yt-dlp-supported site.
+2. Click **Analyze URL** — detects file type and shows name/size.
+3. Click **Download** to start.
 
-```bash
-npm start
-```
+### Changing the Download Location
 
-This will launch the **Afriway Downloader** desktop window with the Flask backend running in the background.
+The **Save to:** bar at the top shows the current folder.
 
-### Building for Distribution
+- Type a path and click **Apply**.
+- Or click **Browse** to pick a folder with the native OS dialog.
 
-To create an installer for your platform:
+Files are organised automatically:
+- YouTube → `<download folder>/YouTube Downloads/`
+- Everything else → `<download folder>/`
 
-**Windows:**
-```bash
-npm run dist:win
-```
+### All Downloads Tab
 
-**macOS:**
-```bash
-npm run dist:mac
-```
+Shows every download (past and active) in one place.
 
-**Linux:**
-```bash
-npm run dist:linux
-```
+- **Search bar** — filter by name or URL.
+- **Type / Status dropdowns** — narrow the list.
+- **"Show in folder"** button — opens the file location in Explorer after completion.
+- **"File moved?"** button — appears when a completed file is no longer at its saved path.
 
-The installer will be generated in the `dist/` folder.
+---
 
 ## Project Structure
 
 ```
-YouTube-Downloader/
-├── main.js              # Electron main process (desktop entry point)
-├── preload.js           # Electron preload script (secure bridge)
-├── package.json         # Node.js project configuration
-├── app.py               # Flask backend (Python server)
-├── download.py          # Download utility functions
-├── static/              # Frontend assets
-│   ├── script.js       # JavaScript functionality
-│   ├── style.css       # African-themed stylesheet
-│   ├── style-dark.css  # Dark theme
-│   └── style-light.css # Light theme
-└── templates/           # HTML templates
-    └── index.html      # Main application interface
+Afriway-Downloader/
+├── app.py              # Flask backend — routes, download threads, session management
+├── requirements.txt    # Python dependencies
+├── downloads.json      # Auto-generated: persisted download history (git-ignored)
+├── static/
+│   ├── script.js       # Frontend — tabs, queue polling, all download flows
+│   ├── style.css       # Responsive dark theme with brand colours
+│   ├── AfriwayLogo.webp
+│   └── qr-coffee.webp  # Auto-generated at startup
+└── templates/
+    └── index.html      # Single-page app shell
 ```
-
-## How It Works
-
-1. **Electron** starts the **Flask** Python backend server automatically
-2. The desktop window loads the web interface from the local Flask server
-3. Paste a YouTube URL → Fetch metadata → Choose quality → Download
-4. When you close the window, both Electron and Flask shut down cleanly
-
-## Workflow
-
-1. **Enter URL** — Paste a YouTube video or playlist link
-2. **Video Details** — Review the selected media information
-3. **Download Type** — Choose between video+audio or audio only
-4. **Quality Selection** — Pick the best video and audio formats
-5. **Playlist Items** — Select which videos to include or skip
-6. **Download** — Start the download and track progress in real-time
-
-## Usage
-
-1. **Launch the app** using `npm start`
-2. **Paste** a YouTube video or playlist URL into the input field
-3. **Click "Fetch URL"** to retrieve video information and available formats
-4. **Select** your preferred video quality and audio format
-5. For playlists, choose which videos to include/exclude
-6. **Click "Pakua Sasa (Download Now)"** to begin downloading
-7. Track progress in real-time
-
-## Troubleshooting
-
-- **"Python not found" error**: Make sure Python is installed and added to your system PATH
-- **"flask not found"**: Run `pip install flask yt_dlp`
-- **FFmpeg errors**: Download and install FFmpeg, or verify it's in your PATH
-- **Download fails**: Check your internet connection and ensure the YouTube URL is valid
-- **Port conflict**: The app automatically finds a free port, so this shouldn't occur
-
-## Tech Stack
-
-- **Frontend:** HTML, CSS, JavaScript (Vanilla)
-- **Desktop Wrapper:** Electron
-- **Backend:** Python Flask
-- **Download Engine:** yt-dlp
-- **Theme:** Ethiopian & Pan-African inspired palette
-
-## License
-
-MIT
 
 ---
 
-*Built with ❤️ using Electron, Flask, and yt-dlp*
-*Design inspired by the colours of Ethiopia, Kenya, and the Pan-African spirit.*
+## Desktop App (planned)
+
+The project is designed to be packaged as a standalone `.exe` using **PyInstaller**:
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile --windowed \
+  --add-data "templates;templates" \
+  --add-data "static;static" \
+  app.py
+```
+
+User data (`downloads.json`, settings) will be stored in `%APPDATA%\AfriWayDownloader\` automatically when running as an exe.
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| "aria2c not found" on Torrent tab | Install aria2c (see Requirements) and restart. Or place `aria2c.exe` in the same folder as `app.py`. |
+| YouTube video has no audio or low quality | Install FFmpeg — without it yt-dlp cannot merge separate video and audio streams. |
+| "Browse" folder picker doesn't open | Ensure tkinter is available: run `python -m tkinter`. On Linux: `sudo apt install python3-tk`. |
+| Port 5000 already in use | `set FLASK_PORT=5001 && python app.py` (Windows) or `FLASK_PORT=5001 python app.py` (macOS/Linux). |
+
+---
+
+## Credits
+
+Developed by **Yosef Mulatu**
+
+If this app saves you time, [buy me a coffee](https://buymeacoffee.com/yosefmulatu) ☕
+
+---
+
+## License
+
+MIT — free to use, modify, and distribute.

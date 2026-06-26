@@ -11,6 +11,8 @@ env/
 # Generated at runtime — not committed
 static/qr-coffee.png
 static/qr-coffee.webp
+downloads.json
+aria2c.exe
 
 # Node / Electron
 node_modules/

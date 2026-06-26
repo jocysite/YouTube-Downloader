@@ -91,6 +91,7 @@ body {
   border-radius: 24px;
   padding: 28px;
   box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 
@@ -358,6 +359,7 @@ body {
   border: 1px solid rgba(212, 175, 55, 0.10);
   border-radius: 24px;
   box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   transition: transform 0.25s ease, border-color 0.25s ease;
 }
@@ -398,6 +400,7 @@ body {
   border-radius: 24px;
   box-shadow: var(--shadow);
   overflow: hidden;
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
 
@@ -1101,10 +1104,118 @@ body {
   letter-spacing: 0.05em;
 }
 
-.status-badge--downloading { background: rgba(212, 175, 55, 0.12); color: var(--gold-brand); }
-.status-badge--completed   { background: rgba(27, 138, 90, 0.15); color: var(--green-brand-light); }
-.status-badge--error       { background: rgba(192, 57, 43, 0.15); color: #e74c3c; }
-.status-badge--queued      { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); }
+.status-badge--downloading   { background: rgba(212, 175, 55, 0.12); color: var(--gold-brand); }
+.status-badge--completed     { background: rgba(27, 138, 90, 0.15); color: var(--green-brand-light); }
+.status-badge--error         { background: rgba(192, 57, 43, 0.15); color: #e74c3c; }
+.status-badge--queued        { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); }
+.status-badge--interrupted   { background: rgba(212, 175, 55, 0.10); color: var(--text-muted); }
+
+/* ══════════════════════════════════════
+   Show in folder button (queue item action)
+══════════════════════════════════════ */
+.btn-show-folder {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(29, 112, 184, 0.30);
+  background: rgba(29, 112, 184, 0.10);
+  color: var(--blue-brand-light);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.btn-show-folder:hover {
+  background: rgba(29, 112, 184, 0.22);
+  border-color: rgba(29, 112, 184, 0.55);
+}
+.btn-show-folder--missing {
+  border-color: rgba(212, 175, 55, 0.30);
+  background: rgba(212, 175, 55, 0.08);
+  color: var(--gold-brand);
+}
+.btn-show-folder--missing:hover {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.55);
+}
+
+/* ══════════════════════════════════════
+   Missing files modal
+══════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.hidden { display: none !important; }
+
+.modal-card {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
+  padding: 0;
+  width: min(480px, 92vw);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.10);
+}
+.modal-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s ease;
+}
+.modal-close:hover { background: rgba(212, 175, 55, 0.12); }
+
+.modal-body {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.missing-path {
+  display: block;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 10px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  color: var(--gold-brand-strong);
+  word-break: break-all;
+}
 
 /* ══════════════════════════════════════
    Developer credit
@@ -1201,9 +1312,59 @@ body {
   .app-shell { padding: 16px; gap: 16px; }
   .sidebar { padding: 20px; }
   .topbar, .card { border-radius: 20px; }
-  .input-group { flex-direction: column; }
-  .btn { width: 100%; }
+
+  /* Inputs & buttons stack vertically */
+  .input-group { flex-direction: column; align-items: stretch; }
+  .btn { width: 100%; justify-content: center; }
+
+  /* Cards get tighter padding */
+  .card-header { padding: 18px 20px; }
+  .card-body   { padding: 18px 20px; }
+  .card-header h3 { font-size: 17px; }
+
+  /* Others / info section — label wraps above value */
+  .info-item {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px;
+  }
+  .info-label { min-width: unset; width: 100%; margin-bottom: 2px; }
+  .info-value { word-break: break-all; }
+
+  /* Queue items — tighten up */
+  .queue-item { padding: 14px 16px; gap: 12px; }
+  .queue-item-icon { width: 34px; height: 34px; font-size: 15px; }
+  .queue-item-name { font-size: 13px; }
+  .queue-item-meta { flex-wrap: wrap; gap: 6px; }
+
+  /* Location bar wraps to two rows */
+  .location-bar-inner { flex-wrap: wrap; padding: 12px 16px; gap: 10px; }
+  .location-input { min-width: 0; }
+
+  /* Torrent upload zone stacks */
+  .file-upload-zone { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .file-name-hint { max-width: 100%; }
+
+  /* Quality/format selector tighter */
   .quality-grid { grid-template-columns: 1fr; }
-  .location-bar-inner { flex-wrap: wrap; }
   .queue-toolbar { flex-direction: column; }
+
+  /* Topbar compact */
+  .topbar { padding: 16px 20px; flex-direction: column; align-items: flex-start; gap: 10px; }
+  .topbar h2 { font-size: 18px; }
+
+  /* Modal fits small screens */
+  .modal-card { border-radius: 20px; }
+  .modal-header { padding: 16px 20px 14px; }
+  .modal-body { padding: 16px 20px 20px; }
+}
+
+@media (max-width: 480px) {
+  .app-shell { padding: 10px; gap: 12px; }
+  .sidebar-nav { gap: 6px; }
+  .nav-item { padding: 10px 12px; font-size: 13px; }
+  .brand-panel { gap: 12px; }
+  .brand-panel h1 { font-size: 18px; }
+  .card-header h3 { font-size: 16px; }
+  .queue-item-icon { display: none; }
 }

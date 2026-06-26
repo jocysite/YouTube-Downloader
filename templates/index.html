@@ -113,6 +113,7 @@
                         <option value="">All Status</option>
                         <option value="downloading">Active</option>
                         <option value="completed">Completed</option>
+                        <option value="interrupted">Interrupted</option>
                         <option value="error">Failed</option>
                     </select>
                 </div>
@@ -366,6 +367,17 @@
             </div>
 
         </main>
+    </div>
+
+    <!-- Missing files modal -->
+    <div id="missingFilesModal" class="modal-overlay hidden" onclick="if(event.target===this)closeMissingModal()">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>⚠️ File Not Found</h3>
+                <button type="button" class="modal-close" onclick="closeMissingModal()">✕</button>
+            </div>
+            <div class="modal-body" id="missingFilesBody"></div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
