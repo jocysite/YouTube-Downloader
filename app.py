@@ -1,6 +1,7 @@
 """
 Flask backend for YouTube Downloader
 """
+import datetime
 import json
 import logging
 import os
@@ -8,8 +9,30 @@ import re
 import subprocess
 import sys
 import threading
+import traceback
 import uuid
 from pathlib import Path
+
+# ── Frozen-context log file (written to AppData\AfriWayDownloader\afriway.log) ─
+_log_path = None
+if getattr(sys, 'frozen', False):
+    _log_dir = os.path.join(
+        os.environ.get('APPDATA', os.path.expanduser('~')), 'AfriWayDownloader')
+    try:
+        os.makedirs(_log_dir, exist_ok=True)
+        _log_path = os.path.join(_log_dir, 'afriway.log')
+    except Exception:
+        pass
+
+def _log(msg):
+    print(msg)
+    if _log_path:
+        try:
+            with open(_log_path, 'a', encoding='utf-8') as f:
+                ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                f.write(f'[{ts}] {msg}\n')
+        except Exception:
+            pass
 
 import yt_dlp
 import qrcode
@@ -24,40 +47,65 @@ except ImportError:
 import shutil
 
 def _find_aria2c():
-    """Return the full path to aria2c, or None if not found.
-    Checks PATH, the bundled static folder, project directory, then common installs.
-    """
+    """Return the full path to aria2c, or None if not found."""
     # 1. Already on PATH
     on_path = shutil.which('aria2c')
     if on_path:
         return on_path
 
-    # 2. Resolve the base directory (handles PyInstaller frozen, Electron spawn, and dev)
+    _appdata_aria2c = os.path.join(
+        os.environ.get('APPDATA', os.path.expanduser('~')),
+        'AfriWayDownloader', 'aria2c.exe')
+
+    # 2. Stable AppData copy (placed there on first run — avoids Windows blocking
+    #    executables in the volatile PyInstaller temp extraction dir)
+    if getattr(sys, 'frozen', False) and os.path.isfile(_appdata_aria2c):
+        return _appdata_aria2c
+
+    # 3. Resolve search directories
     if getattr(sys, 'frozen', False):
-        project_dir = os.path.dirname(sys.executable)
+        dirs_to_search = list(dict.fromkeys([
+            sys._MEIPASS,                    # bundle extraction dir (contains static/)
+            os.path.dirname(sys.executable), # next to the .exe
+            os.getcwd(),
+        ]))
     else:
         try:
             project_dir = os.path.dirname(os.path.abspath(__file__))
         except Exception:
             project_dir = os.getcwd()
+        dirs_to_search = list(dict.fromkeys([project_dir, os.getcwd()]))
 
-    # Also consider the current working directory (Electron sets cwd to the app folder)
-    dirs_to_search = list(dict.fromkeys([project_dir, os.getcwd()]))
-
+    found = None
     for base in dirs_to_search:
-        # 2a. Known bundled location (static/aria2-*/aria2c.exe)
         static_dir = os.path.join(base, 'static')
         if os.path.isdir(static_dir):
             for entry in os.listdir(static_dir):
                 candidate = os.path.join(static_dir, entry, 'aria2c.exe')
                 if os.path.isfile(candidate):
-                    return candidate
-        # 2b. Next to app.py
-        here = os.path.join(base, 'aria2c.exe')
-        if os.path.isfile(here):
-            return here
+                    found = candidate
+                    break
+        if not found:
+            here = os.path.join(base, 'aria2c.exe')
+            if os.path.isfile(here):
+                found = here
+        if found:
+            break
 
-    # 3. Common Windows install locations
+    # 4. If the found copy is inside PyInstaller's temp dir, copy it to AppData so
+    #    Windows is less likely to block it on subsequent runs
+    if found and getattr(sys, 'frozen', False) and sys._MEIPASS in found:
+        try:
+            os.makedirs(os.path.dirname(_appdata_aria2c), exist_ok=True)
+            shutil.copy2(found, _appdata_aria2c)
+            return _appdata_aria2c
+        except Exception:
+            pass  # fall through to use the original path
+
+    if found:
+        return found
+
+    # 5. Common Windows install locations
     candidates = [
         os.path.join(os.environ.get('LOCALAPPDATA', ''), 'aria2', 'aria2c.exe'),
         os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Microsoft', 'WinGet', 'Links', 'aria2c.exe'),
@@ -233,8 +281,12 @@ def get_downloads_folder():
 @app.errorhandler(Exception)
 def handle_unhandled_exception(e):
     """Ensure all unhandled exceptions return JSON instead of Flask's HTML error page."""
-    print(f'❌ Unhandled exception: {e}')
-    return jsonify({'error': str(e)}), 500
+    tb = traceback.format_exc()
+    _log(f'❌ Unhandled exception: {type(e).__name__}: {e}\n{tb}')
+    # Use Response directly to guarantee Content-Type regardless of app context state
+    from flask import Response
+    body = json.dumps({'error': f'{type(e).__name__}: {str(e)}'})
+    return Response(body, status=500, mimetype='application/json')
 
 
 @app.route('/')
@@ -347,12 +399,10 @@ def fetch_info():
                     'audio_formats': []
                 })
 
-    except yt_dlp.utils.DownloadError as e:
-        print(f"❌ Error: {str(e)}\n")
-        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        print(f"❌ Unexpected error in fetch-info: {str(e)}\n")
-        return jsonify({'error': str(e)}), 500
+        tb = traceback.format_exc()
+        _log(f"❌ fetch-info error: {type(e).__name__}: {str(e)}\n{tb}")
+        return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
 
 
 @app.route('/api/fetch-formats', methods=['POST'])
@@ -405,12 +455,10 @@ def fetch_formats():
             'audio_formats': audio_formats
         })
 
-    except yt_dlp.utils.DownloadError as e:
-        print(f"❌ Error: {str(e)}\n")
-        return jsonify({'error': str(e)}), 500
     except Exception as e:
-        print(f"❌ Unexpected error in fetch-formats: {str(e)}\n")
-        return jsonify({'error': str(e)}), 500
+        tb = traceback.format_exc()
+        _log(f"❌ fetch-formats error: {type(e).__name__}: {str(e)}\n{tb}")
+        return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
 
 
 @app.route('/api/download', methods=['POST'])
