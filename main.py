@@ -35,8 +35,9 @@ def _wait_for_flask(port, timeout=30):
 
 
 def _start_flask():
-    # Import here so sys.path adjustments above take effect first
-    from app import app
+    from app import app, _load_sessions, _ensure_qr_code
+    _load_sessions()
+    _ensure_qr_code()
     app.run(host='127.0.0.1', port=PORT, debug=False, use_reloader=False)
 
 
