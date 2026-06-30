@@ -25,7 +25,10 @@ if getattr(sys, 'frozen', False):
         pass
 
 def _log(msg):
-    print(msg)
+    try:
+        print(msg)
+    except Exception:
+        pass
     if _log_path:
         try:
             with open(_log_path, 'a', encoding='utf-8') as f:
@@ -33,6 +36,42 @@ def _log(msg):
                 f.write(f'[{ts}] {msg}\n')
         except Exception:
             pass
+
+# In a windowed frozen exe (console=False), sys.stdout/sys.stderr may be None
+# or a broken handle. yt_dlp writes to them directly — if they are broken the
+# crash bypasses all Python exception handlers. Replace with open(os.devnull)
+# which is a fully-conformant TextIOWrapper that silently discards output.
+# Also ensure certifi's CA bundle is reachable for HTTPS (YouTube) connections.
+if getattr(sys, 'frozen', False):
+    _devnull_file = None
+    for _attr in ('stdout', 'stderr'):
+        _needs = False
+        _stream = getattr(sys, _attr, None)
+        if _stream is None:
+            _needs = True
+        else:
+            try:
+                _stream.write('')
+                _stream.flush()
+            except Exception:
+                _needs = True
+        if _needs:
+            try:
+                if _devnull_file is None:
+                    _devnull_file = open(os.devnull, 'w', encoding='utf-8', errors='replace')
+                setattr(sys, _attr, _devnull_file)
+            except Exception:
+                pass
+
+    # Point requests/urllib3 at certifi's bundled CA file so HTTPS works in exe
+    try:
+        import certifi as _certifi
+        _ca = _certifi.where()
+        if os.path.isfile(_ca):
+            os.environ.setdefault('SSL_CERT_FILE', _ca)
+            os.environ.setdefault('REQUESTS_CA_BUNDLE', _ca)
+    except Exception:
+        pass
 
 import yt_dlp
 import qrcode
@@ -132,6 +171,34 @@ app = Flask(__name__,
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
+# Wrap WSGI app to catch BaseException (e.g. SystemExit from yt_dlp sys.exit calls)
+# which bypass Flask's @app.errorhandler(Exception) and return HTML 500 pages.
+_orig_wsgi = app.wsgi_app
+def _safe_wsgi(environ, start_response):
+    try:
+        return _orig_wsgi(environ, start_response)
+    except BaseException as _e:
+        _tb = traceback.format_exc()
+        _log(f'❌ WSGI BaseException: {type(_e).__name__}: {_e}\n{_tb}')
+        _body = json.dumps({'error': f'{type(_e).__name__}: {str(_e)}'}).encode('utf-8')
+        start_response('500 Internal Server Error', [
+            ('Content-Type', 'application/json; charset=utf-8'),
+            ('Content-Length', str(len(_body))),
+        ])
+        return [_body]
+app.wsgi_app = _safe_wsgi
+
+# Custom yt_dlp logger — routes all yt_dlp output through _log() instead of
+# accessing sys.stdout/sys.stderr directly (prevents crashes in windowed exes).
+class _YtdlpLogger:
+    def debug(self, msg):
+        if not msg.startswith('[debug] '):
+            _log(f'yt-dlp: {msg}')
+    def warning(self, msg):
+        _log(f'yt-dlp warning: {msg}')
+    def error(self, msg):
+        _log(f'yt-dlp error: {msg}')
+
 # Store download sessions
 download_sessions = {}
 
@@ -227,6 +294,36 @@ def _ensure_afriway_dirs():
     return base
 
 
+# ── User preferences (theme, etc.) ────────────────────────────────────────────
+def _get_prefs_file():
+    if getattr(sys, 'frozen', False):
+        data_dir = os.path.join(
+            os.environ.get('APPDATA', os.path.expanduser('~')), 'AfriWayDownloader')
+    else:
+        data_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(data_dir, 'prefs.json')
+
+
+def _load_prefs():
+    try:
+        with open(_get_prefs_file(), 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_prefs(data):
+    try:
+        path = _get_prefs_file()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        existing = _load_prefs()
+        existing.update(data)
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(existing, f)
+    except Exception:
+        pass
+
+
 def _get_type_folder(filename):
     """Map a filename's extension to the correct Afriway subfolder name."""
     ext = os.path.splitext(filename)[1].lower()
@@ -291,8 +388,72 @@ def handle_unhandled_exception(e):
 
 @app.route('/')
 def index():
-    """Serve the main page"""
-    return render_template('index.html')
+    prefs = _load_prefs()
+    theme = prefs.get('theme', 'default')
+    return render_template('index.html', theme=theme)
+
+
+@app.route('/api/prefs', methods=['GET'])
+def api_get_prefs():
+    return jsonify(_load_prefs())
+
+
+@app.route('/api/prefs', methods=['POST'])
+def api_save_prefs():
+    data = request.get_json(silent=True) or {}
+    _save_prefs(data)
+    return jsonify({'ok': True})
+
+
+def _get_cookies_file():
+    if getattr(sys, 'frozen', False):
+        data_dir = os.path.join(
+            os.environ.get('APPDATA', os.path.expanduser('~')), 'AfriWayDownloader')
+    else:
+        data_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(data_dir, 'youtube_cookies.txt')
+
+
+@app.route('/api/cookies/status', methods=['GET'])
+def api_cookies_status():
+    path = _get_cookies_file()
+    if os.path.isfile(path):
+        size = os.path.getsize(path)
+        mtime = os.path.getmtime(path)
+        import datetime
+        date = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d')
+        return jsonify({'loaded': True, 'size': size, 'date': date})
+    return jsonify({'loaded': False})
+
+
+@app.route('/api/cookies/upload', methods=['POST'])
+def api_cookies_upload():
+    f = request.files.get('file')
+    if not f:
+        return jsonify({'error': 'No file'}), 400
+    path = _get_cookies_file()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    f.save(path)
+    return jsonify({'ok': True, 'size': os.path.getsize(path)})
+
+
+@app.route('/api/cookies/clear', methods=['POST'])
+def api_cookies_clear():
+    path = _get_cookies_file()
+    try:
+        if os.path.isfile(path):
+            os.remove(path)
+    except Exception:
+        pass
+    return jsonify({'ok': True})
+
+
+def _yt_cookie_opts():
+    """Return cookiefile opt if a cookies file exists, else empty dict."""
+    path = _get_cookies_file()
+    if os.path.isfile(path):
+        return {'cookiefile': path}
+    return {}
 
 
 def _extract_formats(formats):
@@ -332,10 +493,17 @@ def fetch_info():
 
         print(f"\n🔍 Fetching info for: {url}")
 
-        ydl_opts = {'quiet': True, 'no_warnings': True, 'extract_flat': 'in_playlist'}
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'extract_flat': 'in_playlist',
+            'socket_timeout': 30,
+            'logger': _YtdlpLogger(),
+            **_yt_cookie_opts(),
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            is_playlist = info.get('_type') == 'playlist'
+            is_playlist = (info or {}).get('_type') == 'playlist'
 
         if is_playlist:
             playlist_title = info.get('title', 'Unknown Playlist')
@@ -399,7 +567,7 @@ def fetch_info():
                     'audio_formats': []
                 })
 
-    except Exception as e:
+    except BaseException as e:
         tb = traceback.format_exc()
         _log(f"❌ fetch-info error: {type(e).__name__}: {str(e)}\n{tb}")
         return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
@@ -418,11 +586,14 @@ def fetch_formats():
         if not url:
             return jsonify({'error': 'URL is required'}), 400
 
-        # Shared fast opts: skip HLS manifests (not needed for downloads, saves 1-3s)
+        # Shared fast opts: skip HLS manifests, use ios/web clients, inject cookies if available
         fast_opts = {
             'quiet': True,
             'no_warnings': True,
+            'socket_timeout': 30,
             'extractor_args': {'youtube': {'skip': ['hls']}},
+            'logger': _YtdlpLogger(),
+            **_yt_cookie_opts(),
         }
 
         print(f"🎬 Fetching formats {'(playlist first video)' if is_playlist else '(single video)'}...")
@@ -455,7 +626,7 @@ def fetch_formats():
             'audio_formats': audio_formats
         })
 
-    except Exception as e:
+    except BaseException as e:
         tb = traceback.format_exc()
         _log(f"❌ fetch-formats error: {type(e).__name__}: {str(e)}\n{tb}")
         return jsonify({'error': f'{type(e).__name__}: {str(e)}'}), 500
@@ -613,16 +784,12 @@ def _download_thread(session_id, url, download_type, video_format_id, audio_form
                         if int(percent) > int(last_video_percent):
                             last_video_percent = percent
                             current_stage = 'video'
-                            sys.stdout.write(f"\r🎬 Video: {percent:.1f}% ")
-                            sys.stdout.flush()
+                            print(f"\r🎬 Video: {percent:.1f}% ", end='', flush=True)
                     elif stage == 'audio' or download_type == 'audio':
                         if int(percent) > int(last_audio_percent):
                             last_audio_percent = percent
                             current_stage = 'audio'
-                            if download_type == 'video' and last_video_percent > 0:
-                                print()
-                            sys.stdout.write(f"\r🎵 Audio: {percent:.1f}% ")
-                            sys.stdout.flush()
+                            print(f"\r🎵 Audio: {percent:.1f}% ", end='', flush=True)
 
                     # Update session
                     download_sessions[session_id]['progress'] = percent
@@ -678,13 +845,16 @@ def _download_thread(session_id, url, download_type, video_format_id, audio_form
                 'format': format_string,
                 'merge_output_format': 'mp4',
                 'outtmpl': output_template,
-                'ignoreerrors': True,  # Continue on errors
+                'ignoreerrors': True,
                 'progress_hooks': [progress_hook],
                 'postprocessor_hooks': [postprocessor_hook],
                 'match_filter': match_filter,
                 'noplaylist': not is_playlist,
-                'quiet': False,
-                'no_warnings': False,
+                'socket_timeout': 30,
+                'quiet': True,
+                'no_warnings': True,
+                'logger': _YtdlpLogger(),
+                **_yt_cookie_opts(),
             }
         else:  # audio only
             format_string = (
@@ -705,13 +875,16 @@ def _download_thread(session_id, url, download_type, video_format_id, audio_form
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
                 }],
-                'ignoreerrors': True,  # Continue on errors
+                'ignoreerrors': True,
                 'progress_hooks': [progress_hook],
                 'postprocessor_hooks': [postprocessor_hook],
                 'match_filter': match_filter,
                 'noplaylist': not is_playlist,
-                'quiet': False,
-                'no_warnings': False,
+                'socket_timeout': 30,
+                'quiet': True,
+                'no_warnings': True,
+                'logger': _YtdlpLogger(),
+                **_yt_cookie_opts(),
             }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -817,12 +990,13 @@ def api_analyze_url():
 
         elif url_type == 'video':
             try:
-                opts = {'quiet': True, 'no_warnings': True, 'extract_flat': True}
+                opts = {'quiet': True, 'no_warnings': True, 'extract_flat': True,
+                        'socket_timeout': 30, 'logger': _YtdlpLogger()}
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     info = ydl.extract_info(url, download=False)
-                title = info.get('title', url.split('/')[-1])
+                title = (info or {}).get('title', url.split('/')[-1])
                 result.update({'title': title, 'filename': title})
-            except Exception:
+            except BaseException:
                 title = url.split('/')[-1] or 'video'
                 result.update({'title': title, 'filename': title})
 
@@ -1112,8 +1286,11 @@ def _download_video_best_thread(session_id, url, save_dir=None):
             'outtmpl': os.path.join(save_path, '%(title)s.%(ext)s'),
             'progress_hooks': [progress_hook],
             'postprocessor_hooks': [postprocessor_hook],
+            'socket_timeout': 30,
             'quiet': True,
             'no_warnings': True,
+            'logger': _YtdlpLogger(),
+            **_yt_cookie_opts(),
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
@@ -1490,4 +1667,4 @@ if __name__ == '__main__':
     print("Proudly African - Inspired by Ethiopia")
     print("="*50 + "\n")
 
-    app.run(debug=debug_mode, port=port, host='127.0.0.1')
+    app.run(debug=debug_mode, port=port, host='127.0.0.1', threaded=True)

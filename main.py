@@ -3,6 +3,7 @@ Afriway Downloader — desktop entry point.
 Starts Flask in a background thread, waits for it to be ready,
 then opens a native pywebview window.
 """
+import json
 import os
 import socket
 import sys
@@ -20,6 +21,41 @@ def _resource(rel):
 
 
 PORT = 5050
+
+_DEFAULT_WIDTH  = 1000
+_DEFAULT_HEIGHT = 700
+_MIN_WIDTH      = 860
+_MIN_HEIGHT     = 600
+
+
+def _get_size_file():
+    if getattr(sys, 'frozen', False):
+        data_dir = os.path.join(
+            os.environ.get('APPDATA', os.path.expanduser('~')), 'AfriWayDownloader')
+    else:
+        data_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(data_dir, 'window.json')
+
+
+def _load_window_size():
+    try:
+        with open(_get_size_file(), 'r') as f:
+            d = json.load(f)
+        w = max(_MIN_WIDTH,  int(d.get('width',  _DEFAULT_WIDTH)))
+        h = max(_MIN_HEIGHT, int(d.get('height', _DEFAULT_HEIGHT)))
+        return w, h
+    except Exception:
+        return _DEFAULT_WIDTH, _DEFAULT_HEIGHT
+
+
+def _save_window_size(w, h):
+    try:
+        path = _get_size_file()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as f:
+            json.dump({'width': w, 'height': h}, f)
+    except Exception:
+        pass
 
 
 def _wait_for_flask(port, timeout=30):
@@ -51,11 +87,20 @@ if __name__ == '__main__':
         sys.exit(1)
 
     import webview
-    webview.create_window(
+    width, height = _load_window_size()
+    window = webview.create_window(
         'Afriway Downloader',
         f'http://127.0.0.1:{PORT}',
-        width=1280,
-        height=820,
-        min_size=(860, 600),
+        width=width,
+        height=height,
+        min_size=(_MIN_WIDTH, _MIN_HEIGHT),
     )
+
+    def on_closing():
+        try:
+            _save_window_size(window.width, window.height)
+        except Exception:
+            pass
+
+    window.events.closing += on_closing
     webview.start()

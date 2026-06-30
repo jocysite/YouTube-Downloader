@@ -12,9 +12,14 @@ env/
 static/qr-coffee*.png
 static/qr-coffee*.webp
 downloads.json
+prefs.json
+youtube_cookies.txt
 aria2c.exe
 static/aria2*/
 *.torrent
+style.css.bak
+static/style-dark.css
+static/style-light.css
 
 # Node / Electron
 node_modules/

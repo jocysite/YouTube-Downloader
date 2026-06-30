@@ -1,11 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all, collect_submodules
+from PyInstaller.utils.hooks import collect_all, collect_submodules, collect_data_files
 
 # Collect yt-dlp (has hundreds of extractors that must be bundled)
 ytdlp_datas, ytdlp_binaries, ytdlp_hidden = collect_all('yt_dlp')
 
 # Collect pywebview
 webview_datas, webview_binaries, webview_hidden = collect_all('webview')
+
+# Collect certifi CA bundle (needed for SSL connections to YouTube etc.)
+try:
+    certifi_datas = collect_data_files('certifi')
+except Exception:
+    certifi_datas = []
 
 block_cipher = None
 
@@ -16,7 +22,7 @@ a = Analysis(
     datas=[
         ('templates', 'templates'),
         ('static',    'static'),
-    ] + ytdlp_datas + webview_datas,
+    ] + ytdlp_datas + webview_datas + certifi_datas,
     hiddenimports=(
         ytdlp_hidden
         + webview_hidden
@@ -33,7 +39,7 @@ a = Analysis(
     ),
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['rthook_afriway.py'],
     excludes=['tkinter', 'matplotlib', 'numpy', 'pandas', 'scipy'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -62,5 +68,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='static/facicon.ico',
+    icon='static/afriway.ico',
 )

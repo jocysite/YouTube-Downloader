@@ -502,7 +502,11 @@ function isTorrentUrl(url)  { return url.startsWith("magnet:") || /\.torrent(\?|
 async function safeJson(res) {
   const text = await res.text();
   try { return JSON.parse(text); }
-  catch (_) { return { error: `Server returned unexpected response (HTTP ${res.status}).` }; }
+  catch (_) {
+    // Show first 300 chars of the raw response so the real error is visible
+    const preview = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 300);
+    return { error: `HTTP ${res.status}: ${preview || '(empty response)'}` };
+  }
 }
 
 function buildInfoRow(label, value) {
@@ -829,21 +833,29 @@ async function fetchVideoInfo() {
 }
 
 function displayFormats(data) {
+  const noFmt = `<div class="format-empty">No formats available</div>`;
+
   dlVideoFormatList.innerHTML = "";
-  data.video_formats.forEach((fmt, i) =>
-    dlVideoFormatList.appendChild(createFormatItem(fmt, "video", i)));
+  if (data.video_formats.length === 0) {
+    dlVideoFormatList.innerHTML = noFmt;
+  } else {
+    data.video_formats.forEach((fmt, i) =>
+      dlVideoFormatList.appendChild(createFormatItem(fmt, "video", i)));
+    selectFormat(dlVideoFormatList.children[0], data.video_formats[0], "video");
+  }
 
   dlAudioFormatListV.innerHTML = "";
   dlAudioFormatListA.innerHTML = "";
-  data.audio_formats.forEach((fmt, i) => {
-    dlAudioFormatListV.appendChild(createFormatItem(fmt, "audio", i));
-    dlAudioFormatListA.appendChild(createFormatItem(fmt, "audio", i));
-  });
-
-  if (data.video_formats.length > 0)
-    selectFormat(dlVideoFormatList.children[0], data.video_formats[0], "video");
-  if (data.audio_formats.length > 0)
+  if (data.audio_formats.length === 0) {
+    dlAudioFormatListV.innerHTML = noFmt;
+    dlAudioFormatListA.innerHTML = noFmt;
+  } else {
+    data.audio_formats.forEach((fmt, i) => {
+      dlAudioFormatListV.appendChild(createFormatItem(fmt, "audio", i));
+      dlAudioFormatListA.appendChild(createFormatItem(fmt, "audio", i));
+    });
     selectFormat(dlAudioFormatListV.children[0], data.audio_formats[0], "audio");
+  }
 }
 
 function createFormatItem(format, type, index) {
@@ -1002,8 +1014,184 @@ function showError(message)   { swalDark.fire({ icon: "error",   title: "Error",
 function showSuccess(message) { swalToast.fire({ icon: "success", title: message }); }
 
 // ══════════════════════════════════════════════════
+// Theme
+// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+// YouTube Cookies
+// ══════════════════════════════════════════════════
+async function loadCookieStatus() {
+  try {
+    const r = await fetch('/api/cookies/status');
+    const d = await r.json();
+    const pill = document.getElementById('cookieStatusPill');
+    const icon = document.getElementById('cookieStatusIcon');
+    const text = document.getElementById('cookieStatusText');
+    const clearBtn = document.getElementById('clearCookiesBtn');
+    if (d.loaded) {
+      pill.classList.add('cookie-loaded');
+      icon.textContent = '✓';
+      text.textContent = `Cookies loaded (${(d.size/1024).toFixed(1)} KB · ${d.date})`;
+      clearBtn.style.display = '';
+    } else {
+      pill.classList.remove('cookie-loaded');
+      icon.textContent = '○';
+      text.textContent = 'No cookies loaded';
+      clearBtn.style.display = 'none';
+    }
+  } catch (_) {}
+}
+
+async function uploadCookies(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('/api/cookies/upload', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.ok) { showSuccess('YouTube cookies loaded successfully!'); loadCookieStatus(); }
+    else showError(d.error || 'Failed to upload cookies');
+  } catch (e) { showError(e.message); }
+  input.value = '';
+}
+
+async function clearCookies() {
+  try {
+    await fetch('/api/cookies/clear', { method: 'POST' });
+    showSuccess('YouTube cookies cleared.');
+    loadCookieStatus();
+  } catch (e) { showError(e.message); }
+}
+
+function setTheme(name) {
+  document.documentElement.setAttribute('data-theme', name);
+  document.querySelectorAll('.theme-opt').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.theme === name)
+  );
+  document.getElementById('themeMenu')?.classList.add('hidden');
+  fetch('/api/prefs', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({theme: name})
+  }).catch(() => {});
+}
+
+function toggleThemeMenu(e) {
+  e.stopPropagation();
+  document.getElementById('themeMenu')?.classList.toggle('hidden');
+}
+
+// Close theme menu when clicking outside
+document.addEventListener('click', () => {
+  document.getElementById('themeMenu')?.classList.add('hidden');
+});
+
+// Sync active button with server-set theme on the <html> element
+(function() {
+  const current = document.documentElement.getAttribute('data-theme') || 'default';
+  document.querySelectorAll('.theme-opt').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.theme === current)
+  );
+})();
+
+// ══════════════════════════════════════════════════
 // Init
+// ══════════════════════════════════════════════════
+// URL Input Right-Click Context Menu
+// ══════════════════════════════════════════════════
+(function () {
+  const urlInput = document.getElementById('globalUrlInput');
+  const menu     = document.getElementById('urlContextMenu');
+  const btnCut   = document.getElementById('ctxCut');
+  const btnCopy  = document.getElementById('ctxCopy');
+  const btnPaste = document.getElementById('ctxPaste');
+
+  if (!urlInput || !menu) return;
+
+  function hideMenu() {
+    menu.classList.add('hidden');
+  }
+
+  function showMenu(x, y) {
+    menu.classList.remove('hidden');
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const mw = menu.offsetWidth  || 170;
+    const mh = menu.offsetHeight || 110;
+    menu.style.left = Math.min(x, vw - mw - 6) + 'px';
+    menu.style.top  = Math.min(y, vh - mh - 6) + 'px';
+  }
+
+  urlInput.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+    const hasSel = urlInput.selectionStart !== urlInput.selectionEnd;
+    btnCut.dataset.disabled  = hasSel ? 'false' : 'true';
+    btnCopy.dataset.disabled = hasSel ? 'false' : 'true';
+    showMenu(e.clientX, e.clientY);
+  });
+
+  btnCut.addEventListener('click', function () {
+    urlInput.focus();
+    document.execCommand('cut');
+    hideMenu();
+  });
+
+  btnCopy.addEventListener('click', function () {
+    const start = urlInput.selectionStart;
+    const end   = urlInput.selectionEnd;
+    if (start !== end) {
+      navigator.clipboard.writeText(urlInput.value.slice(start, end)).catch(() => {
+        urlInput.focus();
+        document.execCommand('copy');
+      });
+    }
+    hideMenu();
+  });
+
+  btnPaste.addEventListener('click', function () {
+    navigator.clipboard.readText().then(function (text) {
+      urlInput.focus();
+      const start = urlInput.selectionStart;
+      const end   = urlInput.selectionEnd;
+      const val   = urlInput.value;
+      urlInput.value = val.slice(0, start) + text + val.slice(end);
+      const cursor = start + text.length;
+      urlInput.setSelectionRange(cursor, cursor);
+      urlInput.dispatchEvent(new Event('input'));
+    }).catch(() => {
+      urlInput.focus();
+      document.execCommand('paste');
+    });
+    hideMenu();
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!menu.contains(e.target) && e.target !== urlInput) hideMenu();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hideMenu();
+  });
+})();
+
+// ── Inline paste button inside URL input ──
+(function () {
+  const btn      = document.getElementById('urlPasteBtn');
+  const urlInput = document.getElementById('globalUrlInput');
+  if (!btn || !urlInput) return;
+
+  btn.addEventListener('click', function () {
+    navigator.clipboard.readText().then(function (text) {
+      urlInput.value = text.trim();
+      urlInput.focus();
+      urlInput.dispatchEvent(new Event('input'));
+    }).catch(() => {
+      urlInput.focus();
+      document.execCommand('paste');
+    });
+  });
+})();
+
 // ══════════════════════════════════════════════════
 loadDrives();
 refreshAllQueues();
 startQueuePolling();
+loadCookieStatus();
